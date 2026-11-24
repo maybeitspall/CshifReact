@@ -81,6 +81,14 @@ activitiesRoute.patch('/:id', async (c) => {
     WHERE id = ${id}
     RETURNING *
   `
+
+  // Jika status berubah ke bukan terkendala/tidak_selesai, hapus obstacle lama
+  const newStatus = b.status
+  const obstacleStatuses = ['terkendala', 'tidak_selesai']
+  if (newStatus && !obstacleStatuses.includes(newStatus)) {
+    await sql`DELETE FROM obstacles WHERE activity_id = ${id}`
+  }
+
   return c.json(rows[0])
 })
 

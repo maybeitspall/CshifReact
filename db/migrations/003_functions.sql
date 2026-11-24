@@ -49,7 +49,7 @@ BEGIN
   JOIN activities a ON d.id = a.day_id
   WHERE d.period_id = p_period_id;
 
-  -- Internal vs Eksternal
+  -- Internal vs Eksternal (hanya activity yang masih terkendala/tidak_selesai)
   SELECT
     COALESCE(COUNT(*) FILTER (WHERE o.tipe = 'internal'), 0),
     COALESCE(COUNT(*) FILTER (WHERE o.tipe = 'eksternal'), 0)
@@ -57,9 +57,10 @@ BEGIN
   FROM days d
   JOIN activities a ON d.id = a.day_id
   JOIN obstacles o ON a.id = o.activity_id
-  WHERE d.period_id = p_period_id;
+  WHERE d.period_id = p_period_id
+    AND a.status IN ('terkendala', 'tidak_selesai');
 
-  -- Top kategori hambatan
+  -- Top kategori hambatan (hanya activity yang masih terkendala/tidak_selesai)
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
@@ -76,7 +77,9 @@ BEGIN
     FROM days d
     JOIN activities a ON d.id = a.day_id
     JOIN obstacles o ON a.id = o.activity_id
-    WHERE d.period_id = p_period_id AND o.kategori_id IS NOT NULL
+    WHERE d.period_id = p_period_id
+      AND o.kategori_id IS NOT NULL
+      AND a.status IN ('terkendala', 'tidak_selesai')
     GROUP BY o.kategori_id, o.tipe
     ORDER BY cnt DESC
     LIMIT 3
