@@ -64,7 +64,7 @@ BEGIN
     jsonb_agg(
       jsonb_build_object(
         'nama', oc.nama,
-        'tipe', o.tipe,
+        'tipe', sub.tipe,
         'jumlah', sub.cnt
       )
     ),
