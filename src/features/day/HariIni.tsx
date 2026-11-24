@@ -126,7 +126,11 @@ export default function HariIni() {
       </div>
 
       {/* Form tambah kegiatan */}
-      <TambahKegiatanForm dayId={day?.id ?? ''} onSubmit={createActivity.mutate} />
+      <TambahKegiatanForm
+        dayId={day?.id ?? ''}
+        nextUrutan={activities.length + 1}
+        onSubmit={createActivity.mutate}
+      />
 
       {/* Refleksi malam */}
       {day && <RefleksiMalam day={day} />}
@@ -142,9 +146,11 @@ export default function HariIni() {
 
 function TambahKegiatanForm({
   dayId,
+  nextUrutan,
   onSubmit,
 }: {
   dayId: string
+  nextUrutan: number
   onSubmit: (data: Omit<Activity, 'id' | 'updated_at'>) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -156,7 +162,7 @@ function TambahKegiatanForm({
     if (!nama) return
     onSubmit({
       day_id:              dayId,
-      urutan:              Date.now(),
+      urutan:              nextUrutan,
       nama,
       jam_rencana_mulai:   fd.get('mulai')        as string || null,
       jam_rencana_selesai: fd.get('selesai')      as string || null,

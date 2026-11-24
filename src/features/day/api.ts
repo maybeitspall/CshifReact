@@ -59,6 +59,8 @@ export function useUpdateActivity() {
       api.patch<Activity>(`/activities/${id}`, data),
     onSuccess: (activity) => {
       qc.invalidateQueries({ queryKey: QK.activities(activity.day_id) })
+      qc.invalidateQueries({ queryKey: ['day-progress'] })
+      qc.invalidateQueries({ queryKey: ['period-summary'] })
     },
   })
 }
@@ -70,6 +72,8 @@ export function useCreateActivity() {
       api.post<Activity>('/activities', data),
     onSuccess: (activity) => {
       qc.invalidateQueries({ queryKey: QK.activities(activity.day_id) })
+      qc.invalidateQueries({ queryKey: ['day-progress'] })
+      qc.invalidateQueries({ queryKey: ['period-summary'] })
     },
   })
 }
@@ -81,6 +85,8 @@ export function useDeleteActivity() {
       api.delete(`/activities/${id}`).then(() => ({ dayId })),
     onSuccess: ({ dayId }) => {
       qc.invalidateQueries({ queryKey: QK.activities(dayId) })
+      qc.invalidateQueries({ queryKey: ['day-progress'] })
+      qc.invalidateQueries({ queryKey: ['period-summary'] })
     },
   })
 }
