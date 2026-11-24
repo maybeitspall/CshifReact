@@ -2,16 +2,15 @@ import { useState } from 'react'
 import StatusChip from '@/components/ui/StatusChip'
 import { OBSTACLE_STATUSES, STATUS_LABEL } from '@/lib/metrics'
 import { keterlambatanMenit } from '@/lib/metrics'
-import { useUpdateActivity, useDeleteActivity, useObstacleCategories, useUpsertObstacle } from './api'
+import { useUpdateActivity, useDeleteActivity, useObstacleCategories, useUpsertObstacle, useObstacles } from './api'
 import type { Activity, ActivityStatus, Obstacle } from '@/types'
 
 interface ActivityItemProps {
   activity: Activity
   onStatusToggle: (activity: Activity, next: ActivityStatus) => void
-  obstacle?: Obstacle | null
 }
 
-export default function ActivityItem({ activity, onStatusToggle, obstacle }: ActivityItemProps) {
+export default function ActivityItem({ activity, onStatusToggle }: ActivityItemProps) {
   const [editorOpen, setEditorOpen] = useState(false)
   const updateActivity = useUpdateActivity()
   const deleteActivity = useDeleteActivity()
@@ -59,9 +58,9 @@ export default function ActivityItem({ activity, onStatusToggle, obstacle }: Act
         </button>
       </div>
 
-      {/* Obstacle form — muncul hanya saat status perlu */}
+      {/* Obstacle form — muncul hanya saat status perlu, load dari DB */}
       {butuhObstacle && (
-        <ObstacleInline activityId={activity.id} obstacle={obstacle} />
+        <ObstacleInline activityId={activity.id} />
       )}
 
       {/* Editor inline */}
@@ -87,20 +86,22 @@ export default function ActivityItem({ activity, onStatusToggle, obstacle }: Act
 // ---- Obstacle inline ----
 function ObstacleInline({
   activityId,
-  obstacle,
 }: {
   activityId: string
-  obstacle?: Obstacle | null
 }) {
   const { data: kategoriList = [] } = useObstacleCategories()
+  const { data: obstacleList = [] }  = useObstacles(activityId)
   const upsert = useUpsertObstacle()
+
+  // Ambil obstacle pertama dari DB, jika ada
+  const obstacle = obstacleList[0] ?? null
 
   function handleChange(field: string, value: string) {
     upsert.mutate({
       activity_id: activityId,
-      tipe:        field === 'tipe'    ? (value as Obstacle['tipe']) : obstacle?.tipe ?? 'internal',
-      kategori_id: field === 'kategori_id' ? value : obstacle?.kategori_id ?? null,
-      deskripsi:   field === 'deskripsi' ? value : obstacle?.deskripsi ?? '',
+      tipe:        field === 'tipe'        ? (value as Obstacle['tipe']) : obstacle?.tipe ?? 'internal',
+      kategori_id: field === 'kategori_id' ? value                       : obstacle?.kategori_id ?? null,
+      deskripsi:   field === 'deskripsi'   ? value                       : obstacle?.deskripsi ?? '',
       ...(obstacle?.id ? { id: obstacle.id } : {}),
     })
   }
@@ -109,8 +110,10 @@ function ObstacleInline({
     <div className="obstacle">
       <div className="field">
         <label>Tipe hambatan</label>
+        {/* key=obstacle?.id memastikan re-render saat data DB masuk */}
         <select
           className="input"
+          key={`tipe-${obstacle?.id ?? 'new'}`}
           defaultValue={obstacle?.tipe ?? 'internal'}
           onChange={(e) => handleChange('tipe', e.target.value)}
         >
@@ -122,6 +125,7 @@ function ObstacleInline({
         <label>Kategori</label>
         <select
           className="input"
+          key={`kat-${obstacle?.id ?? 'new'}`}
           defaultValue={obstacle?.kategori_id ?? ''}
           onChange={(e) => handleChange('kategori_id', e.target.value)}
         >
@@ -136,6 +140,7 @@ function ObstacleInline({
         <input
           className="input"
           type="text"
+          key={`desk-${obstacle?.id ?? 'new'}`}
           defaultValue={obstacle?.deskripsi ?? ''}
           placeholder="Apa yang mengganggu?"
           onBlur={(e) => handleChange('deskripsi', e.target.value)}

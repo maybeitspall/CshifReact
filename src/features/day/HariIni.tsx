@@ -1,13 +1,20 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useActivePeriod } from '@/features/periods/api'
-import { useDay, useActivities, useUpdateActivity, useCreateActivity } from './api'
+import { useDay, useActivities, useUpdateActivity, useCreateActivity, useUpdateDay } from './api'
 import ActivityItem from './ActivityItem'
 import Skeleton from '@/components/ui/Skeleton'
 import ErrorState from '@/components/ui/ErrorState'
 import Button from '@/components/ui/Button'
 import { progresHarian, scoreClass } from '@/lib/metrics'
-import type { Activity, ActivityStatus } from '@/types'
+import type { Activity, ActivityStatus, Day } from '@/types'
+
+// ---- Helpers ----
+function levelMotivasi(val: number) {
+  if (val <= 3) return 'Rendah'
+  if (val <= 6) return 'Sedang'
+  return 'Tinggi'
+}
 
 export default function HariIni() {
   const { data: period } = useActivePeriod()
@@ -44,7 +51,7 @@ export default function HariIni() {
       <div className="well" style={{ textAlign: 'center' }}>
         <p style={{ marginBottom: 'var(--space-md)' }}>Belum ada periode aktif.</p>
         <Link className="btn btn--primary" to="/pengaturan">
-          Buka Pengaturan & Buat Periode
+          Buka Pengaturan &amp; Buat Periode
         </Link>
       </div>
     </div>
@@ -110,6 +117,9 @@ export default function HariIni() {
         </p>
       </div>
 
+      {/* Motivasi Pagi */}
+      {day && <MotivasisPagi day={day} />}
+
       {/* Daftar kegiatan */}
       <h2>Kegiatan</h2>
       <p className="section-note">
@@ -144,6 +154,62 @@ export default function HariIni() {
 
 // ---- Sub-components ----
 
+// ---- Motivasi Pagi ----
+function MotivasisPagi({ day }: { day: Day }) {
+  const updateDay = useUpdateDay()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [motivasi, setMotivasi] = useState(day.motivasi ?? 5)
+
+  function debouncedSave(patch: Partial<Day>) {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      updateDay.mutate({ id: day.id, period_id: day.period_id, ...patch })
+    }, 600)
+  }
+
+  return (
+    <div style={{ marginBottom: 'var(--space-lg)' }}>
+      <h2>Motivasi pagi</h2>
+      <div className="well field-stack">
+        <div className="field">
+          <label htmlFor="motivasi-slider">
+            Level motivasi — <strong>{motivasi}</strong>{' '}
+            <span className="helper">({levelMotivasi(motivasi)})</span>
+          </label>
+          <div className="range-row">
+            <input
+              type="range"
+              id="motivasi-slider"
+              min={1}
+              max={10}
+              step={1}
+              value={motivasi}
+              onChange={(e) => {
+                const v = Number(e.target.value)
+                setMotivasi(v)
+                debouncedSave({ motivasi: v })
+              }}
+            />
+            <span className="range-value">{motivasi}</span>
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="teks-motivasi">Catatan motivasi (opsional)</label>
+          <input
+            className="input"
+            id="teks-motivasi"
+            type="text"
+            defaultValue={day.teks_motivasi ?? ''}
+            placeholder="Apa yang mendorongmu hari ini?"
+            onBlur={(e) => debouncedSave({ teks_motivasi: e.target.value })}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Tambah Kegiatan Form ----
 function TambahKegiatanForm({
   dayId,
   nextUrutan,
@@ -206,7 +272,18 @@ function TambahKegiatanForm({
   )
 }
 
-function RefleksiMalam({ day }: { day: import('@/types').Day }) {
+// ---- Refleksi Malam (fully wired) ----
+function RefleksiMalam({ day }: { day: Day }) {
+  const updateDay = useUpdateDay()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function debouncedSave(patch: Partial<Day>) {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      updateDay.mutate({ id: day.id, period_id: day.period_id, ...patch })
+    }, 600)
+  }
+
   return (
     <div>
       <h2>Refleksi malam</h2>
@@ -218,17 +295,21 @@ function RefleksiMalam({ day }: { day: import('@/types').Day }) {
             id="jumlah-penundaan"
             type="number"
             min={0}
-            defaultValue={day.jumlah_penundaan}
+            defaultValue={day.jumlah_penundaan ?? 0}
+            onBlur={(e) =>
+              debouncedSave({ jumlah_penundaan: Number(e.target.value) })
+            }
           />
         </div>
         <div className="field">
-          <label htmlFor="catatan-akhir">Pemicu utama hari ini</label>
+          <label htmlFor="pemicu-utama">Pemicu utama / jenis hambatan hari ini</label>
           <textarea
             className="input"
-            id="catatan-akhir"
+            id="pemicu-utama"
             rows={3}
             defaultValue={day.catatan_akhir ?? ''}
-            placeholder="Tidak ada hambatan sejauh ini…"
+            placeholder="Contoh: distraksi HP, rapat mendadak, kurang tidur…"
+            onBlur={(e) => debouncedSave({ catatan_akhir: e.target.value })}
           />
         </div>
       </div>

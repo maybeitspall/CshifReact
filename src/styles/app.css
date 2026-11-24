@@ -670,6 +670,25 @@
       gap: var(--space-sm);
     }
 
+    /* Pastikan time input tidak overflow di iOS Safari */
+    .form-row .input[type="time"],
+    .form-row input[type="time"] {
+      -webkit-appearance: none;
+      appearance: none;
+      max-width: 100%;
+      min-width: 0;
+      width: 100%;
+      box-sizing: border-box;
+      font-size: var(--text-sm);
+    }
+
+    @media (max-width: 24rem) {
+      /* Pada layar sangat kecil, stack form-row secara vertikal */
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .check {
       display: flex;
       align-items: center;
